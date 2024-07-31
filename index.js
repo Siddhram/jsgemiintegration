@@ -71,6 +71,65 @@ app.post('/image', async (req, res) => {
         res.status(500).json({ error: 'Error generating content' });
     }
 });
+const chatSessions = {};
+
+// Define the chat function
+async function chat(sessionId, prompt) {
+  // Create an instance of GoogleGenerativeAI with the API key
+  const genAI = new GoogleGenerativeAI(key);
+
+  // Get the generative model
+  const model = await genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  // Retrieve or initialize the chat history for the session
+  if (!chatSessions[sessionId]) {
+    chatSessions[sessionId] = [
+      {
+        role: "user",
+        parts: [{ text: "Hello" }],
+      },
+      {
+        role: "model",
+        parts: [{ text: "Great to meet you. What would you like to know?" }],
+      },
+    ];
+  }
+
+  const history = chatSessions[sessionId];
+
+  // Start the chat with the current history
+  const chat = await model.startChat({ history });
+
+  // Send the new message and get the response
+  let result = await chat.sendMessage(prompt);
+
+  // Update the chat history with the new user message and model response
+  history.push({
+    role: "user",
+    parts: [{ text: prompt }],
+  });
+  history.push({
+    role: "model",
+    parts: [{ text: result.response.text() }],
+  });
+
+  // Store the updated history back to the session
+  chatSessions[sessionId] = history;
+
+  return result.response.text();
+}
+
+// Route to handle chat messages
+app.post('/history', async function(req, res) {
+  try {
+    const { sessionId, prompt } = req.body;
+    const response = await chat(sessionId, prompt);
+    res.status(200).json({ response });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
