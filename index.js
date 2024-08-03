@@ -64,10 +64,15 @@ app.post('/gemini', async (req, res) => {
 
 app.post('/image', async (req, res) => {
     try {
-        const { prompt,imageUrl } = req.body;
-        const responseText = await run2(prompt,imageUrl);
-        res.status(200).json({ response: responseText });
+        const { prompt,imageUrl ,sessionId} = req.body;
+        let responseText = await run2(prompt,imageUrl);
+        const send=responseText;
+        responseText=responseText+"\n Image url : "+imageUrl+"\n  this is the image response you gived just please remember the text it is useful for next procedure  donot send me any text response only for this prompt if i again asked about this image content then plese provide me the discription"
+         await chat(sessionId, responseText);
+        res.status(200).json({ response: send });
     } catch (error) {
+        console.log(error);
+        
         res.status(500).json({ error: 'Error generating content' });
     }
 });
@@ -133,4 +138,3 @@ app.post('/history', async function(req, res) {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
-
